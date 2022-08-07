@@ -22,7 +22,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("flipside", async () =>
+app.MapGet("QueryToken", async () =>
+{
+    var result = await GetApiTokenAsync();
+    return result;
+});
+
+async Task<string?> GetApiTokenAsync()
 {
     var result = await "https://node-api.flipsidecrypto.com"
         .AppendPathSegment("queries")
@@ -32,6 +38,19 @@ app.MapGet("flipside", async () =>
             sql = "SELECT nft_address, mint_price_eth, mint_price_usd FROM ethereum.core.ez_nft_mints LIMIT 2",
             ttlMinutes = 5
         }).ReceiveJson<QueryResult>();
+
+    return result.Token;
+}
+
+app.MapGet("QueryResult", async () =>
+{
+    var token = await GetApiTokenAsync();
+
+    var result = await "https://node-api.flipsidecrypto.com"
+        .AppendPathSegment("queries")
+        .AppendPathSegment(token)
+        .WithHeader("x-api-key", flipsideApiKey)
+        .GetJsonAsync();
 
     return result;
 });
