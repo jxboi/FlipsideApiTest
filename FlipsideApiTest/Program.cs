@@ -1,4 +1,10 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using Flurl;
+using Flurl.Http;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Get Flipside API key store in environment variable
+var flipsideApiKey = builder.Configuration["Flipside:ApiKey"];
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -16,28 +22,24 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapGet("flipside", async () =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var result = await "https://node-api.flipsidecrypto.com"
+        .AppendPathSegment("queries")
+        .WithHeader("x-api-key", flipsideApiKey)
+        .PostJsonAsync(new
+        {
+            sql = "SELECT nft_address, mint_price_eth, mint_price_usd FROM ethereum.core.ez_nft_mints LIMIT 2",
+            ttlMinutes = 5
+        }).ReceiveJson<QueryResult>();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateTime.Now.AddDays(index),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    return result;
+});
 
 app.Run();
 
-record WeatherForecast(DateTime Date, int TemperatureC, string? Summary)
+class QueryResult
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public string? Token { get; set; }
+    public bool Cache { get; set; }
 }
